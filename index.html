@@ -2,225 +2,181 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SurplusLink</title>
+    <title>ShiftSwap UI</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 0; color: #333; }
-        .navbar { background: #27ae60; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 0; color: #333; }
+        .navbar { background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .navbar h1 { margin: 0; font-size: 1.5em; }
         .nav-controls { display: flex; align-items: center; gap: 15px; }
-        .profile-badge { background: #2ecc71; padding: 8px 15px; border-radius: 20px; border: 1px solid #fff; font-size: 0.9em; font-weight: bold; }
-        .container { max-width: 1000px; margin: 20px auto; padding: 0 20px; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h1, h2, h3 { color: #2c3e50; margin-top: 0; }
+        .profile-badge { background: #34495e; padding: 8px 15px; border-radius: 20px; border: 1px solid #7f8c8d; font-size: 0.9em; }
+        .badge-manager { border-color: #e74c3c; color: #ffcccc; }
+        .badge-staff { border-color: #2ecc71; color: #ccffcc; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        button { background: #3498db; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button { background: #3498db; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 5px; }
         button:hover { background: #2980b9; }
-        .btn-danger { background: #e74c3c; } .btn-danger:hover { background: #c0392b; }
-        .btn-success { background: #2ecc71; } .btn-success:hover { background: #27ae60; }
-        input, select { padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; }
-        .stats-box { background: #ecf0f1; padding: 15px; border-radius: 6px; font-size: 1.1em; line-height: 1.6; }
+        .btn-green { background: #2ecc71; } .btn-red { background: #e74c3c; } .btn-orange { background: #f39c12; }
+        select { padding: 8px; font-size: 14px; border-radius: 4px; background: #fff; color: #333; }
+        ul { list-style: none; padding: 0; }
+        li { background: #f9f9f9; padding: 15px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
         .hidden { display: none; }
-        ul { list-style-type: none; padding: 0; }
-        li { background: #fdfdfd; border: 1px solid #eee; margin-bottom: 10px; padding: 15px; border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <div class="navbar">
-    <h1>🍲 SurplusLink</h1>
+    <h1>⚕️ ShiftSwap</h1>
     <div class="nav-controls">
-        <div id="activeProfileBadge" class="profile-badge">Loading...</div>
+        <div id="profileBadge" class="profile-badge">Loading Profile...</div>
         <div>
-            <select id="role-select" onchange="populateIds()">
-                <option value="donor">Donors</option>
-                <option value="volunteer">Volunteers</option>
-            </select>
-            <select id="id-select" onchange="switchRole()"></select>
+            <strong>Switch User:</strong> 
+            <select id="userSelect" onchange="renderUI()"></select>
         </div>
     </div>
 </div>
 
 <div class="container">
-    <div class="card grid">
-        <div>
-            <h3>⏱️ System Clock</h3>
-            <h2 id="clock-display" style="color: #e67e22;">Loading...</h2>
-            <input type="datetime-local" id="new-clock-input">
-            <button onclick="advanceClock()">Update Clock</button>
-        </div>
-        <div>
-            <h3>📊 Live Dashboard</h3>
-            <div class="stats-box" id="dashboard-stats">Loading stats...</div>
-        </div>
-    </div>
-
-    <div id="donor-view" class="card hidden">
+    <div id="staffView" class="hidden">
         <div class="grid">
-            <div>
-                <h3>➕ Post New Donation</h3>
-                <input type="text" id="d-desc" placeholder="Food Description (e.g. Rice)" style="width: 90%;"><br>
-                <input type="number" id="d-kg" placeholder="Quantity (kg)" min="1" style="width: 90%;"><br>
-                <small>Pickup Window:</small><br>
-                <input type="datetime-local" id="d-from" title="From"> to 
-                <input type="datetime-local" id="d-until" title="Until"><br>
-                <button class="btn-success" onclick="postDonation()" style="margin-top: 10px;">Post Donation</button>
+            <div class="card">
+                <h2>🗓️ My Assigned Shifts</h2>
+                <ul id="myShiftsList"></ul>
             </div>
-            <div>
-                <h3>📋 My Posted Donations</h3>
-                <div id="donor-list"></div>
+            <div class="card">
+                <h2>🔄 Available Swap Listings</h2>
+                <ul id="openListingsList"></ul>
             </div>
+        </div>
+        <div class="card">
+            <h2>🏷️ My Active Activity</h2>
+            <ul id="myListingsList"></ul>
         </div>
     </div>
 
-    <div id="volunteer-view" class="card hidden">
-        <h3>🚚 Available Donations in My Zone</h3>
-        <div id="vol-avail-list"></div>
+    <div id="managerView" class="card hidden">
+        <h2>🛡️ Pending Manager Approvals</h2>
+        <ul id="approvalList"></ul>
+    </div>
+
+    <div class="card">
+        <h2>📜 System History</h2>
+        <ul id="historyList" style="max-height: 250px; overflow-y: auto; display: block;"></ul>
     </div>
 </div>
 
 <script>
-    const API = 'http://localhost:8080/SurplusLink/api';
-    let currentRole = 'donor';
-    let currentId = 'D1';
-
-    const donorsData = { 'D1': 'NORTH', 'D2': 'SOUTH', 'D3': 'EAST', 'D4': 'WEST', 'D5': 'NORTH' };
-    const volsData = { 'V1': 'NORTH, EAST', 'V2': 'NORTH', 'V3': 'SOUTH', 'V4': 'WEST', 'V5': 'EAST', 'V6': 'WEST, NORTH' };
+    const API = 'http://localhost:8080/ShiftSwap/api';
+    let data = { staff: [], shifts: [], history: [], listings: [] };
 
     async function init() {
-        populateIds();
-        await loadDashboard();
-    }
-
-    function populateIds() {
-        currentRole = document.getElementById('role-select').value;
-        const idSelect = document.getElementById('id-select');
-        idSelect.innerHTML = '';
+        const resData = await fetch(`${API}/data.php`).then(r => r.json());
+        const resList = await fetch(`${API}/listings.php`).then(r => r.json());
         
-        if (currentRole === 'donor') {
-            Object.keys(donorsData).forEach(id => idSelect.innerHTML += `<option value="${id}">${id}</option>`);
-        } else {
-            Object.keys(volsData).forEach(id => idSelect.innerHTML += `<option value="${id}">${id}</option>`);
-        }
-        switchRole();
-    }
+        data.staff = resData.staff;
+        data.shifts = resData.shifts;
+        data.history = resData.history;
+        data.listings = resList.listings || [];
 
-    function switchRole() {
-        currentRole = document.getElementById('role-select').value;
-        currentId = document.getElementById('id-select').value;
-        
-        const badge = document.getElementById('activeProfileBadge');
-        if (currentRole === 'donor') {
-            badge.innerText = `🏢 Donor ${currentId} | Zone: ${donorsData[currentId]}`;
-            badge.style.background = '#e67e22';
-        } else {
-            badge.innerText = `🚗 Volunteer ${currentId} | Zones: ${volsData[currentId]}`;
-            badge.style.background = '#2980b9';
-        }
-        
-        document.getElementById('donor-view').classList.add('hidden');
-        document.getElementById('volunteer-view').classList.add('hidden');
-        document.getElementById(`${currentRole}-view`).classList.remove('hidden');
-        loadView();
-    }
-
-    async function loadDashboard() {
-        try {
-            const res = await fetch(`${API}/dashboard.php`).then(r => r.json());
-            if (res.current_clock) document.getElementById('clock-display').innerText = res.current_clock;
+        const select = document.getElementById('userSelect');
+        if (select.options.length === 0) {
+            let staffGroup = document.createElement('optgroup'); staffGroup.label = "Clinic Staff";
+            let mgrGroup = document.createElement('optgroup'); mgrGroup.label = "Management";
             
-            if (res.global_stats) {
-                let s = res.global_stats;
-                document.getElementById('dashboard-stats').innerHTML = `
-                    <strong>Listed:</strong> ${s.Listed} kg<br>
-                    <strong>Collected:</strong> ${s.Collected} kg | <strong>Missed:</strong> ${s.Missed} kg | <strong>Wasted:</strong> ${s.Wasted} kg<br>
-                    <strong>In Progress:</strong> ${s.In_progress} kg | <strong>Still Open:</strong> ${s.Still_open} kg<br>
-                    <hr>
-                    <span style="color: ${s.Math_Is_Valid ? 'green' : 'red'};">
-                        Math Valid (Listed = Sum of others): ${s.Math_Is_Valid}
-                    </span>
-                `;
-            }
-        } catch(e) { console.error("Dashboard error", e); }
+            data.staff.forEach(s => {
+                let opt = document.createElement('option');
+                opt.value = s.id; opt.text = s.name;
+                s.role === 'MANAGER' ? mgrGroup.appendChild(opt) : staffGroup.appendChild(opt);
+            });
+            select.appendChild(mgrGroup);
+            select.appendChild(staffGroup);
+        }
+        renderUI();
     }
 
-    async function advanceClock() {
-        const t = document.getElementById('new-clock-input').value;
-        if(!t) return alert("Please select a time.");
-        const res = await fetch(`${API}/clock.php`, {
-            method: 'POST', body: JSON.stringify({new_time: t}), headers:{'Content-Type':'application/json'}
-        }).then(r => r.json());
-        
-        if (res.error) alert(res.error);
-        else { init(); loadView(); }
-    }
+    function renderUI() {
+        const userId = document.getElementById('userSelect').value;
+        const user = data.staff.find(s => s.id === userId);
+        if (!user) return;
 
-    async function loadView() {
-        currentId = document.getElementById('id-select').value;
-        if(currentRole === 'donor') {
-            const res = await fetch(`${API}/donations.php?role=donor&id=${currentId}`).then(r => r.json());
-            let html = '<ul>';
-            (res.donations || []).forEach(d => {
-                let status = d.cancelled == 1 ? "🚫 CANCELLED" : "🟢 ACTIVE";
-                html += `<li>
-                    <div style="display:flex; justify-content:space-between;">
-                        <div><strong>${d.description}</strong> (${d.quantity_kg}kg)<br>Status: ${status} | Window: ${d.pickup_from} to ${d.pickup_until}</div>
-                        <div><button class="btn-danger" onclick="cancelDonation('${d.id}')">Cancel</button></div>
-                    </div>
+        // Update Nav Badge
+        const badge = document.getElementById('profileBadge');
+        badge.innerHTML = `👤 <strong>${user.name}</strong> | ${user.role} ${user.certifications !== "[]" ? '| Certs: ' + user.certifications : ''}`;
+        badge.className = `profile-badge ${user.role === 'MANAGER' ? 'badge-manager' : 'badge-staff'}`;
+
+        document.getElementById('staffView').classList.toggle('hidden', user.role !== 'STAFF');
+        document.getElementById('managerView').classList.toggle('hidden', user.role !== 'MANAGER');
+
+        if (user.role === 'STAFF') {
+            let myShiftsHtml = '';
+            const myShifts = data.shifts.filter(s => s.assigned_to === userId);
+            myShifts.forEach(s => {
+                const isListed = data.listings.find(l => l.shift_id === s.id && ['OPEN', 'CLAIMED'].includes(l.status));
+                myShiftsHtml += `<li>
+                    <div><strong>${s.id}</strong>: ${s.start_time} to ${s.end_time} <br>Req Cert: ${s.required_certification || 'None'}</div>
+                    <div>${!isListed ? `<button onclick="postListing('${s.id}')">Post</button>` : '<em>Listed</em>'}</div>
                 </li>`;
             });
-            document.getElementById('donor-list').innerHTML = html + '</ul>';
-        } else {
-            const res = await fetch(`${API}/donations.php?role=volunteer&id=${currentId}`).then(r => r.json());
-            let html = '<ul>';
-            if(!res.donations || res.donations.length === 0) html += `<i>No active donations in your zone right now.</i>`;
-            (res.donations || []).forEach(d => {
-                html += `<li><strong>${d.description}</strong> - ${d.remaining_kg}kg available<br>
-                Pickup window: ${d.pickup_from} to ${d.pickup_until}<br><br>
-                Claim <input type="number" id="claim-kg-${d.id}" max="${d.remaining_kg}" min="1" value="1" style="width: 50px;"> kg 
-                at <input type="datetime-local" id="claim-time-${d.id}">
-                <button class="btn-success" onclick="claimDonation('${d.id}')">Submit Claim</button></li>`;
+            document.getElementById('myShiftsList').innerHTML = myShiftsHtml || '<i>No shifts assigned.</i>';
+
+            let openHtml = '';
+            const openListings = data.listings.filter(l => l.status === 'OPEN' && l.poster_id !== userId);
+            openListings.forEach(l => {
+                openHtml += `<li>
+                    <div><strong>Shift ${l.shift_id}</strong> (by ${l.poster_name})<br>${l.start_time} to ${l.end_time} [Cert: ${l.required_certification || 'None'}]</div>
+                    <div><button class="btn-green" onclick="claimListing(${l.id})">Claim</button></div>
+                </li>`;
             });
-            document.getElementById('vol-avail-list').innerHTML = html + '</ul>';
+            document.getElementById('openListingsList').innerHTML = openHtml || '<i>No available shifts.</i>';
+
+            let myLHtml = '';
+            const myListings = data.listings.filter(l => (l.poster_id === userId || l.claimer_id === userId) && ['OPEN','CLAIMED'].includes(l.status));
+            myListings.forEach(l => {
+                if (l.poster_id === userId && l.status === 'OPEN') {
+                    myLHtml += `<li><div>Posted: Shift ${l.shift_id} (OPEN)</div> <button class="btn-orange" onclick="actionListing(${l.id}, 'WITHDRAW')">Withdraw</button></li>`;
+                } else if (l.claimer_id === userId && l.status === 'CLAIMED') {
+                    myLHtml += `<li><div>Claimed: Shift ${l.shift_id} (Pending)</div> <button class="btn-orange" onclick="actionListing(${l.id}, 'UNCLAIM')">Unclaim</button></li>`;
+                } else if (l.poster_id === userId && l.status === 'CLAIMED') {
+                    myLHtml += `<li><div>Posted: Shift ${l.shift_id} (CLAIMED by ${l.claimer_name} - Pending)</div></li>`;
+                }
+            });
+            document.getElementById('myListingsList').innerHTML = myLHtml || '<i>No active activity.</i>';
+        } 
+        else if (user.role === 'MANAGER') {
+            let appHtml = '';
+            const pending = data.listings.filter(l => l.status === 'CLAIMED');
+            pending.forEach(l => {
+                appHtml += `<li>
+                    <div><strong>Shift ${l.shift_id}</strong><br>Poster: ${l.poster_name} ➔ Claimer: ${l.claimer_name}<br>Time: ${l.start_time} to ${l.end_time}</div>
+                    <div><button class="btn-green" onclick="mgrAction(${l.id}, 'APPROVE')">Approve</button> <button class="btn-red" onclick="mgrAction(${l.id}, 'REJECT')">Reject</button></div>
+                </li>`;
+            });
+            document.getElementById('approvalList').innerHTML = appHtml || '<i>No pending approvals.</i>';
         }
+
+        let histHtml = '';
+        data.history.forEach(h => {
+            histHtml += `<li style="display:block; padding: 10px;">[${h.created_at}] <strong>${h.user_name}</strong> performed <strong>${h.action}</strong> on Shift ${h.shift_id}: <em>${h.outcome}</em></li>`;
+        });
+        document.getElementById('historyList').innerHTML = histHtml || '<i>No history yet.</i>';
     }
 
-    async function postDonation() {
-        const body = {
-            donor_id: currentId,
-            description: document.getElementById('d-desc').value,
-            quantity_kg: parseInt(document.getElementById('d-kg').value),
-            pickup_from: document.getElementById('d-from').value,
-            pickup_until: document.getElementById('d-until').value
-        };
-        const res = await fetch(`${API}/donations.php`, {
-            method: 'POST', body: JSON.stringify(body), headers:{'Content-Type':'application/json'}
-        }).then(r => r.json());
-        if(res.error) alert(res.error); else { document.getElementById('d-desc').value = ''; init(); loadView(); }
+    async function apiCall(endpoint, bodyData) {
+        try {
+            const res = await fetch(`${API}/${endpoint}`, {
+                method: 'POST', body: JSON.stringify(bodyData), headers: {'Content-Type': 'application/json'}
+            }).then(r => r.json());
+            
+            if (res.violations) alert("Action Refused. Rules Violated:\n- " + res.violations.join('\n- '));
+            else if (res.error) alert("Error: " + res.error);
+            init(); 
+        } catch(e) { alert("Server Error"); console.error(e); }
     }
 
-    async function cancelDonation(donId) {
-        const res = await fetch(`${API}/donation_cancel.php`, {
-            method: 'POST', body: JSON.stringify({donation_id: donId}), headers:{'Content-Type':'application/json'}
-        }).then(r => r.json());
-        if(res.error) alert(res.error); else { init(); loadView(); }
-    }
-
-    async function claimDonation(donId) {
-        const body = {
-            donation_id: donId,
-            volunteer_id: currentId,
-            quantity_kg: parseInt(document.getElementById(`claim-kg-${donId}`).value),
-            planned_at: document.getElementById(`claim-time-${donId}`).value
-        };
-        const res = await fetch(`${API}/claim.php`, {
-            method: 'POST', body: JSON.stringify(body), headers:{'Content-Type':'application/json'}
-        }).then(r => r.json());
-        
-        if(res.violations) alert("Claim rejected:\n- " + res.violations.join('\n- '));
-        else if (res.error) alert(res.error);
-        else { init(); loadView(); }
-    }
+    function postListing(shiftId) { apiCall('listings.php', { shift_id: shiftId, poster_id: document.getElementById('userSelect').value }); }
+    function claimListing(listingId) { apiCall('claim.php', { listing_id: listingId, claimer_id: document.getElementById('userSelect').value }); }
+    function actionListing(listingId, action) { apiCall('listing_action.php', { listing_id: listingId, user_id: document.getElementById('userSelect').value, action: action }); }
+    function mgrAction(listingId, action) { apiCall('approve.php', { listing_id: listingId, manager_id: document.getElementById('userSelect').value, action: action }); }
 
     window.onload = init;
 </script>
