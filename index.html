@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ShiftSwap UI</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        button { background: #3498db; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 5px; }
+        button:hover { background: #2980b9; }
+        .btn-green { background: #2ecc71; } .btn-red { background: #e74c3c; } .btn-orange { background: #f39c12; }
+        select { padding: 8px; font-size: 16px; border-radius: 4px; }
+        ul { list-style: none; padding: 0; }
+        li { background: #f9f9f9; padding: 15px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+        <h1 style="margin:0;">⚕️ ShiftSwap</h1>
+        <div>
+            <strong>Act As:</strong> 
+            <select id="userSelect" onchange="renderUI()"></select>
+        </div>
+    </div>
+
+    <div id="staffView" class="hidden">
+        <div class="grid">
+            <div class="card">
+                <h2>🗓️ My Assigned Shifts</h2>
+                <ul id="myShiftsList"></ul>
+            </div>
+            <div class="card">
+                <h2>🔄 Available Swap Listings</h2>
+                <ul id="openListingsList"></ul>
+            </div>
+        </div>
+        <div class="card">
+            <h2>🏷️ My Active Activity (Posted or Claimed)</h2>
+            <ul id="myListingsList"></ul>
+        </div>
+    </div>
+
+    <div id="managerView" class="card hidden">
+        <h2>🛡️ Pending Manager Approvals</h2>
+        <ul id="approvalList"></ul>
+    </div>
+
+    <div class="card">
+        <h2>📜 System History</h2>
+        <ul id="historyList" style="max-height: 300px; overflow-y: auto;"></ul>
+    </div>
+</div>
+
+<script>
+    const API = 'http://localhost:8080/ShiftSwap/api';
+    let data = { staff: [], shifts: [], history: [], listings: [] };
+
+    async function init() {
+        const resData = await fetch(`${API}/data.php`).then(r => r.json());
+        const resList = await fetch(`${API}/listings.php`).then(r => r.json());
+        
+        data.staff = resData.staff;
+        data.shifts = resData.shifts;
+        data.history = resData.history;
+        data.listings = resList.listings || [];
+
+        const select = document.getElementById('userSelect');
+        if (select.options.length === 0) {
+            data.staff.forEach(s => {
+                let opt = document.createElement('option');
+                opt.value = s.id;
+                opt.text = `${s.name} (${s.role})`;
+                select.appendChild(opt);
+            });
+        }
+        renderUI();
+    }
+
+    function renderUI() {
+        const userId = document.getElementById('userSelect').value;
+        const user = data.staff.find(s => s.id === userId);
+        if (!user) return;
+
+        document.getElementById('staffView').classList.toggle('hidden', user.role !== 'STAFF');
+        document.getElementById('managerView').classList.toggle('hidden', user.role !== 'MANAGER');
+
+        if (user.role === 'STAFF') {
+            let myShiftsHtml = '';
+            const myShifts = data.shifts.filter(s => s.assigned_to === userId);
+            myShifts.forEach(s => {
+                const isListed = data.listings.find(l => l.shift_id === s.id && ['OPEN', 'CLAIMED'].includes(l.status));
+                myShiftsHtml += `<li><strong>${s.id}</strong>: ${s.start_time} to ${s.end_time} <br>
+                    Req Cert: ${s.required_certification || 'None'}<br>
+                    ${!isListed ? `<button style="margin-top:5px;" onclick="postListing('${s.id}')">Post for Swap</button>` : '<em>Currently Listed</em>'}
+                </li>`;
+            });
+            document.getElementById('myShiftsList').innerHTML = myShiftsHtml || '<i>No shifts assigned.</i>';
+
+            let openHtml = '';
+            const openListings = data.listings.filter(l => l.status === 'OPEN' && l.poster_id !== userId);
+            openListings.forEach(l => {
+                openHtml += `<li><strong>Shift ${l.shift_id}</strong> (Posted by ${l.poster_name})<br>
+                    ${l.start_time} to ${l.end_time} [Cert: ${l.required_certification || 'None'}]<br>
+                    <button class="btn-green" style="margin-top:5px;" onclick="claimListing(${l.id})">Claim Shift</button>
+                </li>`;
+            });
+            document.getElementById('openListingsList').innerHTML = openHtml || '<i>No available shifts.</i>';
+
+            let myLHtml = '';
+            const myListings = data.listings.filter(l => (l.poster_id === userId || l.claimer_id === userId) && ['OPEN','CLAIMED'].includes(l.status));
+            myListings.forEach(l => {
+                if (l.poster_id === userId && l.status === 'OPEN') {
+                    myLHtml += `<li>Posted: Shift ${l.shift_id} (OPEN) - <button class="btn-orange" onclick="actionListing(${l.id}, 'WITHDRAW')">Withdraw</button></li>`;
+                } else if (l.claimer_id === userId && l.status === 'CLAIMED') {
+                    myLHtml += `<li>Claimed: Shift ${l.shift_id} (Pending Approval) - <button class="btn-orange" onclick="actionListing(${l.id}, 'UNCLAIM')">Unclaim</button></li>`;
+                } else if (l.poster_id === userId && l.status === 'CLAIMED') {
+                    myLHtml += `<li>Posted: Shift ${l.shift_id} (CLAIMED by ${l.claimer_name} - Pending Mgr Approval)</li>`;
+                }
+            });
+            document.getElementById('myListingsList').innerHTML = myLHtml || '<i>No active activity.</i>';
+        } 
+        
+        else if (user.role === 'MANAGER') {
+            let appHtml = '';
+            const pending = data.listings.filter(l => l.status === 'CLAIMED');
+            pending.forEach(l => {
+                appHtml += `<li><strong>Shift ${l.shift_id}</strong><br>
+                    Poster: ${l.poster_name} ➔ Claimer: ${l.claimer_name}<br>
+                    Time: ${l.start_time} to ${l.end_time}<br>
+                    <button class="btn-green" style="margin-top:5px;" onclick="mgrAction(${l.id}, 'APPROVE')">Approve</button>
+                    <button class="btn-red" onclick="mgrAction(${l.id}, 'REJECT')">Reject</button>
+                </li>`;
+            });
+            document.getElementById('approvalList').innerHTML = appHtml || '<i>No pending approvals.</i>';
+        }
+
+        let histHtml = '';
+        data.history.forEach(h => {
+            histHtml += `<li>[${h.created_at}] <strong>${h.user_name}</strong> performed <strong>${h.action}</strong> on Shift ${h.shift_id}: <em>${h.outcome}</em></li>`;
+        });
+        document.getElementById('historyList').innerHTML = histHtml || '<i>No history yet.</i>';
+    }
+
+    async function apiCall(endpoint, bodyData) {
+        try {
+            const res = await fetch(`${API}/${endpoint}`, {
+                method: 'POST', body: JSON.stringify(bodyData), headers: {'Content-Type': 'application/json'}
+            }).then(r => r.json());
+            
+            if (res.violations) alert("Action Refused. Rules Violated:\n- " + res.violations.join('\n- '));
+            else if (res.error) alert("Error: " + res.error);
+            else alert(res.message || "Success");
+            
+            init(); 
+        } catch(e) { alert("Server Error"); console.error(e); }
+    }
+
+    function postListing(shiftId) { apiCall('listings.php', { shift_id: shiftId, poster_id: document.getElementById('userSelect').value }); }
+    function claimListing(listingId) { apiCall('claim.php', { listing_id: listingId, claimer_id: document.getElementById('userSelect').value }); }
+    function actionListing(listingId, action) { apiCall('listing_action.php', { listing_id: listingId, user_id: document.getElementById('userSelect').value, action: action }); }
+    function mgrAction(listingId, action) { apiCall('approve.php', { listing_id: listingId, manager_id: document.getElementById('userSelect').value, action: action }); }
+
+    window.onload = init;
+</script>
+</body>
+</html>
